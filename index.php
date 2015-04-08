@@ -4,7 +4,10 @@ $wsdl='http://geotruckservice.cloudapp.net/GeoTruckService.svc?wsdl';
 $client = new soapclient($wsdl);
 $temp = $client->GetPositions();
 $table_positions = json_decode($temp->GetPositionsResult,true,512);
-var_dump($table_positions);
+$count = count($table_positions);
+
+$delai = 5;
+header("Refresh:$delai;");
 ?>
 
 <!DOCTYPE html>
@@ -34,35 +37,48 @@ var_dump($table_positions);
     <script src="plugins/jvectormap/jquery-jvectormap-1.2.2.min.js" type="text/javascript"></script>
     <script src="plugins/jvectormap/jquery-jvectormap-fr_regions-mill-en.js" type="text/javascript"></script>
 	<script>
+	//Affichage des points sur la map
 	jQuery(function($) {
+		// Création du tableau de marqueurs
+		var camions = [
+		<?php 
+				// Comptage du nombre de positions données
+				for ($i = 0; $i < $count; $i++) {
+					//définition de la couleur du marqueur
+					if($table_positions['0']['etat']['gravite'] == "4"){
+						$etat = "red";
+					} else if ($table_positions['0']['etat']['gravite'] == "3") {
+						$etat = "orange";
+					} else if ($table_positions['0']['etat']['gravite'] == "2") {
+						$etat = "#00c0ef";
+					} else {
+						$etat = "green";
+					} 
+					
+					// Parsage de la date de l'alerte
+					$date_array = date_parse($table_positions['0']['etat']['date']);
+					if($date_array[minute] >= 0 && $date_array[minute] <= 9){
+						$date_array[minute] = "0" . $date_array[minute];
+					}
+					$date_alerte = $date_array[hour] . "h" .$date_array[minute];
+					
+					// Affichage des marqueurs et de leurs données
+					echo "{latLng: [" . $table_positions['0']['localisation']['latitude'] . "," . $table_positions['0']['localisation']['longitude'] . "], marque: '". $table_positions['0']['camion']['Marque'] . "', immatriculation:'" . $table_positions['0']['camion']['Immatriculation'] ."', date_alerte: '". $date_alerte ."', style: {fill: '". $etat ."'}, commentaire_alerte: '". $table_positions['0']['etat']['commentaire'] ."', chauffeur: '" . $table_positions['0']['chauffeur']['Nom'] . " " . $table_positions['0']['chauffeur']['Prenom'] . "'}, ";
+				} 
+			?>
+		];
       $('#map').vectorMap({
       	map: 'fr_regions_mill_en',
-      	scaleColors: ['#C8EEFF', '#0071A4'],
-     	markerStyle: {
-	      	initial: {
-		      	fill: '#F8E23B',
-		      	stroke: '#383f47'
-		    }
-		},
-		markerLabelStyle: {
-		  initial: {
-		    'font-family': 'Verdana',
-		    'font-size': '132',
-		    'font-weight': 'bold',
-		    cursor: 'default',
-		    fill: 'grey'
-		  }
-		},
-		backgroundColor: '#383f47',
-		markers: [
-			<?php 
-				$count = count($table_positions);
-				for ($i = 0; $i < $count; $i++) {
-					echo "{latLng: [" . $table_positions['0']['localisation']['latitude'] . "," . $table_positions['0']['localisation']['longitude'] . "], name: '". $table_positions['0']['camion']['Marque'] . " - " . $table_positions['0']['camion']['Immatriculation'] ."'} , ";
-				} 
-			?> 
-		],
-		
+      	markers: camions,
+      	markerLabelStyle: {
+	        hover: {
+		        fill: 'red'
+	        }
+        },
+      	onMarkerLabelShow: function(event, label, index) {
+     label.html('<span style="font-size:16px">' + camions[index].marque + ' [' + camions[index].immatriculation + ']</span><br/><span style="font-size:16px">' + camions[index].chauffeur + '</span><br/><span style="font-size:16px">' + camions[index].date_alerte + ' : ' + camions[index].commentaire_alerte + '</span>');                
+    },
+		backgroundColor: '#383f47'
 	  });
     });
     </script>
@@ -89,48 +105,7 @@ var_dump($table_positions);
           <div class="navbar-custom-menu">
             <ul class="nav navbar-nav">              
               <!-- Notifications: style can be found in dropdown.less -->
-              <li class="dropdown notifications-menu">
-                <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                  <i class="fa fa-bell-o"></i>
-                  <span class="label label-warning">10</span>
-                </a>
-                <ul class="dropdown-menu">
-                  <li class="header">You have 10 notifications</li>
-                  <li>
-                    <!-- inner menu: contains the actual data -->
-                    <ul class="menu">
-                      <li>
-                        <a href="#">
-                          <i class="fa fa-users text-aqua"></i> 5 new members joined today
-                        </a>
-                      </li>
-                      <li>
-                        <a href="#">
-                          <i class="fa fa-warning text-yellow"></i> Very long description here that may not fit into the page and may cause design problems
-                        </a>
-                      </li>
-                      <li>
-                        <a href="#">
-                          <i class="fa fa-users text-red"></i> 5 new members joined
-                        </a>
-                      </li>
-
-                      <li>
-                        <a href="#">
-                          <i class="fa fa-shopping-cart text-green"></i> 25 sales made
-                        </a>
-                      </li>
-                      <li>
-                        <a href="#">
-                          <i class="fa fa-user text-red"></i> You changed your username
-                        </a>
-                      </li>
-                    </ul>
-                  </li>
-                  <li class="footer"><a href="#">View all</a></li>
-                </ul>
-              </li>
-              <!-- User Account: style can be found in dropdown.less -->
+	              <!-- User Account: style can be found in dropdown.less -->
               <li class="dropdown user user-menu">
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown">
                   <img src="dist/img/Default_Profile.jpg" class="user-image" alt="User Image"/>
@@ -163,7 +138,7 @@ var_dump($table_positions);
       <aside class="main-sidebar">
         <!-- sidebar: style can be found in sidebar.less -->
         <section class="sidebar">
-          <!-- search form -->
+          <!-- search form
           <form action="#" method="get" class="sidebar-form">
             <div class="input-group">
               <input type="text" name="q" class="form-control" placeholder="Rechercher..."/>
@@ -171,15 +146,30 @@ var_dump($table_positions);
                 <button type='submit' name='search' id='search-btn' class="btn btn-flat"><i class="fa fa-search"></i></button>
               </span>
             </div>
-          </form>
+          </form> -->
           <!-- /.search form -->
           <!-- sidebar menu: : style can be found in sidebar.less -->
           <ul class="sidebar-menu">
             <li class="header">Menu</li>
 
             <li>
-              <a href="index2.html">
-                <i class="fa fa-dashboard"></i> <span>Dashboard</span> <small class="label pull-right bg-red">3</small>
+              <a href="index.php">
+                <i class="fa fa-dashboard"></i> <span>Dashboard</span>
+              </a>
+            </li>
+            <li>
+              <a href="alertes.php">
+                <i class="fa fa-table"></i> <span>Toutes les alertes</span> 
+              </a>
+            </li>
+            <li>
+              <a href="creation_chauffeur.php">
+                <i class="fa fa-edit"></i> <span>Ajouter un chauffeur</span> 
+              </a>
+            </li>
+            <li>
+              <a href="fiche_chauffeur.php">
+                <i class="fa fa-folder"></i> <span>Chercher un chauffeur</span> 
               </a>
             </li>
             
@@ -206,47 +196,56 @@ var_dump($table_positions);
         <section class="content">
           <!-- Info boxes -->
           <div class="row">
-            <div class="col-md-3 col-sm-6 col-xs-12">
-              <div class="info-box">
-                <span class="info-box-icon bg-aqua"><i class="ion ion-ios-gear-outline"></i></span>
-                <div class="info-box-content">
-                  <span class="info-box-text">Total</span>
-                  <span class="info-box-number">500</span>
-                </div><!-- /.info-box-content -->
-              </div><!-- /.info-box -->
-            </div><!-- /.col -->
-            <div class="col-md-3 col-sm-6 col-xs-12">
-              <div class="info-box">
-                <span class="info-box-icon bg-green"><i class="fa fa-google-plus"></i></span>
-                <div class="info-box-content">
-                  <span class="info-box-text">En conduite</span>
-                  <span class="info-box-number">350</span>
-                </div><!-- /.info-box-content -->
-              </div><!-- /.info-box -->
-            </div><!-- /.col -->
-
-            <!-- fix for small devices only -->
-            <div class="clearfix visible-sm-block"></div>
-
-            <div class="col-md-3 col-sm-6 col-xs-12">
-              <div class="info-box">
-                <span class="info-box-icon bg-red"><i class="ion ion-ios-cart-outline"></i></span>
-                <div class="info-box-content">
-                  <span class="info-box-text">Bloqués</span>
-                  <span class="info-box-number">50</span>
-                </div><!-- /.info-box-content -->
-              </div><!-- /.info-box -->
-            </div><!-- /.col -->
-            <div class="col-md-3 col-sm-6 col-xs-12">
-              <div class="info-box">
-                <span class="info-box-icon bg-yellow"><i class="ion ion-ios-people-outline"></i></span>
-                <div class="info-box-content">
-                  <span class="info-box-text">En pause</span>
-                  <span class="info-box-number">100</span>
-                </div><!-- /.info-box-content -->
-              </div><!-- /.info-box -->
-            </div><!-- /.col -->
+            <div class="col-lg-3 col-xs-6">
+              <!-- small box -->
+              <div class="small-box bg-aqua">
+                <div class="inner">
+                  <h3>150 <sup style="font-size: 20px">camions</sup></h3>
+                  <p>en Pause</p>
+                </div>
+                <div class="icon">
+                  <i class="ion ion-fork"></i>
+                </div>
+              </div>
+            </div><!-- ./col -->
+            <div class="col-lg-3 col-xs-6">
+              <!-- small box -->
+              <div class="small-box bg-green">
+                <div class="inner">
+                  <h3>53 <sup style="font-size: 20px">camions</sup></h3>
+                  <p>en Route</p>
+                </div>
+                <div class="icon">
+                  <i class="ion ion-map"></i>
+                </div>
+              </div>
+            </div><!-- ./col -->
+            <div class="col-lg-3 col-xs-6">
+              <!-- small box -->
+              <div class="small-box bg-yellow">
+                <div class="inner">
+                  <h3>44 <sup style="font-size: 20px">camions</sup></h3>
+                  <p>Bloqués (Incident mineur)</p>
+                </div>
+                <div class="icon">
+                  <i class="ion ion-android-warning"></i>
+                </div>
+              </div>
+            </div><!-- ./col -->
+            <div class="col-lg-3 col-xs-6">
+              <!-- small box -->
+              <div class="small-box bg-red">
+                <div class="inner">
+                  <h3>65 <sup style="font-size: 20px">camions</sup></h3>
+                  <p>Bloqués (Incident majeur)</p>
+                </div>
+                <div class="icon">
+                  <i class="ion ion-android-alert"></i>
+                </div>
+              </div>
+            </div><!-- ./col -->
           </div><!-- /.row -->
+
 
           <!-- Main row -->
           <div class="row">
@@ -292,49 +291,51 @@ var_dump($table_positions);
                     <table class="table no-margin" >
                       <thead>
                         <tr>
-                          <th>ID Camion</th>
+                          <th>Marque Camion</th>
+                          <th>Immatriculation</th>
                           <th>Nom Chauffeur</th>
-                          <th>Niveau d'alerte</th>
+                          <th>Type d'alerte</th>
+                          <th>Gravité</th>
                           <th>Commentaire</th>
                         </tr>
                       </thead>
                       <tbody>
-                        <tr >
-                          <td><a href="pages/examples/invoice.html">TRUCK9842</a></td>
-                          <td>Alexandre Martin</td>
-                          <td><span class="label label-success">1</span></td>
-                          <td><div class="sparkbar" data-color="#00a65a" data-height="20">Malaise</div></td>
-                        </tr>
-                        <tr>
-                          <td><a href="pages/examples/invoice.html">TRUCK7429</a></td>
-                          <td>Thierry Moreau</td>
-                          <td><span class="label label-warning">2</span></td>
-                          <td><div class="sparkbar" data-color="#00c0ef" data-height="20">Changement Roue</div></td>
-                        </tr>
-                        <tr>
-                          <td><a href="pages/examples/invoice.html">TRUCK1848</a></td>
-                          <td>Gilles Tulles</td>
-                          <td><span class="label label-warning">2</span></td>
-                          <td><div class="sparkbar" data-color="#f39c12" data-height="20">Besoin dépanneuse</div></td>
-                        </tr>
-                        <tr>
-                          <td><a href="pages/examples/invoice.html">TRUCK7429</a></td>
-                          <td>Pierre Faure</td>
-                          <td><span class="label label-danger">3</span></td>
-                          <td><div class="sparkbar" data-color="#f56954" data-height="20">Dysfonctionnement Application</div></td>
-                        </tr>
-                        <tr>
-                          <td><a href="pages/examples/invoice.html">TRUCK9842</a></td>
-                          <td>Franck Mortier</td>
-                          <td><span class="label label-success">1</span></td>
-                          <td><div class="sparkbar" data-color="#00a65a" data-height="20">Problème de circulation</div></td>
-                        </tr>
-                      </tbody>
+                      	<?php
+                      		if ($count > 5) {
+	                      		$count = 5;
+                      		} 
+                      		
+                      		for ($i = 0; $i < $count; $i++) {
+                      		
+                      			if($table_positions['0']['etat']['gravite'] == "4"){
+									$class = "label label-danger";
+								} else if ($table_positions['0']['etat']['gravite'] == "3") {
+									$class = "label label-warning";
+								} else if ($table_positions['0']['etat']['gravite'] == "2") {
+									$class = "label label-primary";
+								} else {
+									$class = "label label-success";
+								} 
+                      		
+                      			$tr = "<tr>";
+	                      		$tr .= "<td><a href='#'>" . $table_positions['0']['camion']['Marque'] . "</a></td>";
+	                      		$tr .= "<td>" . $table_positions['0']['camion']['Immatriculation'] . "</td>";
+	                      		$tr .= "<td>" . $table_positions['0']['chauffeur']['Prenom'] . " " . $table_positions['0']['chauffeur']['Nom'] . "</td>";
+	                      		$tr .= "<td>" . $table_positions['0']['etat']['type'] . "</td>";
+	                      		$tr .= "<td><span class='". $class ."'>" . $table_positions['0']['etat']['gravite'] . "</span></td>";
+	                      		$tr .= "<td>" . $table_positions['0']['etat']['commentaire'] . "</td>";
+	                      		$tr .= "</tr>";
+	                      		 
+	                      		echo $tr;
+	                      	}
+	                      		
+                      	?>
+                       </tbody>
                     </table>
                   </div><!-- /.table-responsive -->
                 </div><!-- /.box-body -->
                 <div class="box-footer clearfix">
-                  <a href="javascript::;" class="btn btn-sm btn-info btn-flat pull-right">Voir toutes les alertes</a>
+                  <a href="alertes.php" class="btn btn-sm btn-info btn-flat pull-right">Voir toutes les alertes</a>
                 </div><!-- /.box-footer -->
               </div><!-- /.box -->
             </div><!-- /.col -->
@@ -345,9 +346,9 @@ var_dump($table_positions);
 
       <footer class="main-footer">
         <div class="pull-right hidden-xs">
-          <b>Version</b> 2.0
+          <b>Version</b> 1.2
         </div>
-        <strong>Copyright &copy; 2014-2015 <a href="http://almsaeedstudio.com">Almsaeed Studio</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; 2014-2015 <a href="#">Geotruck</a>.</strong> Tous droits réservés.
       </footer>
 
     </div><!-- ./wrapper -->

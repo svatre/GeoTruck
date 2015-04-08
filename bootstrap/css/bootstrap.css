@@ -4767,6 +4767,9 @@ a.label:focus {
 .label-success {
   background-color: #5cb85c;
 }
+.label-grey {
+  background-color: grey;
+}
 .label-success[href]:hover,
 .label-success[href]:focus {
   background-color: #449d44;
